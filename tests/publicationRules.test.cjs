@@ -1,0 +1,25 @@
+const assert=require('node:assert/strict');const {test}=require('node:test');
+const {execFileSync}=require('node:child_process');const fs=require('node:fs');const os=require('node:os');const path=require('node:path');
+const cli=path.resolve(__dirname,'..','node_modules','esbuild','bin','esbuild');
+const target=path.join(os.tmpdir(),`bca-publication-rules-${process.pid}.cjs`);
+execFileSync(process.execPath,[cli,path.resolve(__dirname,'..','src/main/publicationRules.ts'),'--bundle','--platform=node','--format=cjs',`--outfile=${target}`],{stdio:'pipe'});
+const {snapshotFingerprint,publicationBlockers,documentViews,weeklyCells,escapeHtml,safeFilename,hasEvidence}=require(target);
+process.on('exit',()=>{try{fs.unlinkSync(target);}catch{}});
+const event=(o={})=>({id:'e',source:'Theory',title:'Data Structures',detail:'Test',mode:'Weekly',weekday:0,bookingDate:null,startPeriod:1,periodCount:1,sectionIds:['s1'],facultyId:'f1',labId:null,...o});
+const schedule=()=>({term:{id:'t1',academicYear:'2026-27',cycle:'Even'},sections:[{id:'s1',label:'Semester II-A'}],faculty:[{id:'f1',name:'Faculty 1',target:18}],labs:[{id:'l1',code:'LAB1'}],events:[event()],datedEvents:[],suspensions:[],unplaced:[],conflicts:[],clock:{confirmed:true,periods:[1,2,3,4,5,6].map(n=>({number:n,start:'09:00',end:'10:00'}))},stale:false,saturdayConfirmed:true});
+test('complete draft has no machine blockers',()=>assert.deepEqual(publicationBlockers(schedule()),[]));
+test('unplaced allocated hours block approval',()=>{const s=schedule();s.unplaced=[{sectionId:'s1',subject:'English',required:4,placed:2,remaining:2}];assert.match(publicationBlockers(s).join(' '),/2 active allocated/);});
+test('weekly clashes prevent approval',()=>{const s=schedule();s.conflicts=['faculty conflict'];assert.match(publicationBlockers(s).join(' '),/collision/);});
+test('empty section blocks approval',()=>{const s=schedule();s.sections.push({id:'s2',label:'Semester II-B'});assert.match(publicationBlockers(s).join(' '),/II-B/);});
+test('stale theory draft blocks approval',()=>{const s=schedule();s.stale=true;assert.match(publicationBlockers(s).join(' '),/stale/);});
+test('no theory blocks approval',()=>{const s=schedule();s.events=[event({source:'Lab'})];assert.match(publicationBlockers(s).join(' '),/No saved theory/);});
+test('unconfirmed clock blocks approval',()=>{const s=schedule();s.clock.confirmed=false;assert.match(publicationBlockers(s).join(' '),/clock/);});
+test('bad dated year 1016 blocks approval',()=>{const s=schedule();s.datedEvents=[event({mode:'Dated',bookingDate:'1016-11-09'})];assert.match(publicationBlockers(s).join(' '),/academic-year/);});
+test('same fingerprint for frozen unchanged payload',()=>{const a={schedule:schedule(),branding:{collegeName:'RV College'}};assert.equal(snapshotFingerprint(a),snapshotFingerprint(JSON.parse(JSON.stringify(a))));});
+test('brand changes invalidate fingerprint',()=>{const a={schedule:schedule(),branding:{collegeName:'A'}};const b={schedule:schedule(),branding:{collegeName:'B'}};assert.notEqual(snapshotFingerprint(a),snapshotFingerprint(b));});
+test('department exports every view; individual selections narrow',()=>{const s=schedule();s.labs=[{id:'l1',code:'LAB1'}];assert.equal(documentViews(s,'Department').length,3);assert.equal(documentViews(s,'Faculty','f1').length,1);assert.equal(documentViews(s,'Faculty','bad').length,0);});
+test('two-hour block is visible on both periods',()=>{const e=event({startPeriod:4,periodCount:2});assert.equal(weeklyCells([e],0,4).length,1);assert.equal(weeklyCells([e],0,5).length,1);assert.equal(weeklyCells([e],0,6).length,0);});
+test('approval with both channels requires both pieces of evidence',()=>{assert.equal(hasEvidence('Both',[{channel:'Printed'}]),false);assert.equal(hasEvidence('Both',[{channel:'Printed'},{channel:'Digital'}]),true);});
+test('HTML output escapes injected tags and filenames are sanitized',()=>{assert.equal(escapeHtml('<script>'),'&lt;script&gt;');assert.equal(safeFilename('a/b:foo?.pdf'),'a_b_foo_.pdf');});
+
+test('unconfirmed Saturday campus policy blocks approval',()=>{const s=schedule();s.saturdayConfirmed=false;assert.match(publicationBlockers(s).join(' '),/Saturday campus/);});

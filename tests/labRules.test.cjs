@@ -1,0 +1,32 @@
+/** Run from the project root: node --test tests/labRules.test.cjs */
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const ts = require('typescript');
+const Module = require('node:module');
+const filename = path.resolve(__dirname, '../src/main/labRules.ts');
+const source = fs.readFileSync(filename, 'utf8');
+const compiled = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText;
+const mod = new Module(filename, module);
+mod.filename = filename;
+mod.paths = module.paths;
+mod._compile(compiled, filename);
+const { validateSlot, resourceConflict, weekdayOfISODate, overlapsInTime } = mod.exports;
+const config = { days: 6, periodsPerDay: 6, saturdayPeriods: 3, breakAfter: 3 };
+const make = (change = {}) => ({ term_id: 'term1', mode: 'Weekly', weekday: 0, booking_date: null, start_period: 1, lab_id: 'lab1', section_id: null, faculty_id: null, ...change });
+
+test('valid 2-period block', () => assert.doesNotThrow(() => validateSlot(config, make({ start_period: 1 }))));
+test('block crossing break fails', () => assert.throws(() => validateSlot(config, make({ start_period: 3 })), /break/));
+test('Saturday last slot cannot exceed available periods', () => assert.throws(() => validateSlot(config, make({ weekday: 5, start_period: 3 })), /two consecutive/));
+test('Sunday date rejected', () => assert.throws(() => validateSlot(config, make({ mode: 'Dated', booking_date: '2026-11-01', weekday: 6 })), /working day/));
+test('invalid calendar date rejected', () => assert.throws(() => weekdayOfISODate('2026-02-30'), /Invalid calendar date/));
+test('same lab same period conflicts', () => assert.match(resourceConflict(make(), make({ section_id: 'sec2' })), /Laboratory/));
+test('separate labs but same section conflicts', () => assert.match(resourceConflict(make({ lab_id: 'lab1', section_id: 'sec1' }), make({ lab_id: 'lab2', section_id: 'sec1' })), /section/));
+test('separate labs but same faculty conflicts', () => assert.match(resourceConflict(make({ lab_id: 'lab1', faculty_id: 'fac1' }), make({ lab_id: 'lab2', faculty_id: 'fac1' })), /Faculty/));
+test('different labs and sections do not conflict', () => assert.equal(resourceConflict(make(), make({ lab_id: 'lab2' })), null));
+test('adjacent nonoverlapping two-period blocks allowed', () => assert.equal(resourceConflict(make({ start_period: 1 }), make({ start_period: 3 })), null));
+test('weekly reservation conflicts with dated reservation on same weekday', () => assert.ok(overlapsInTime(make(), make({ mode: 'Dated', booking_date: '2026-11-02' }))));
+test('two dated reservations on distinct dates do not conflict', () => assert.equal(resourceConflict(make({ mode: 'Dated', booking_date: '2026-11-02' }), make({ mode: 'Dated', booking_date: '2026-11-09' })), null));
+test('weekly reservations from separate terms do not conflict', () => assert.equal(resourceConflict(make(), make({ term_id: 'term2' })), null));
+test('dated reservations for same date conflict even across terms', () => assert.match(resourceConflict(make({ mode: 'Dated', booking_date: '2026-11-02' }), make({ term_id: 'term2', mode: 'Dated', booking_date: '2026-11-02' })), /Laboratory/));

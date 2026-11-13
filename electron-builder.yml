@@ -1,0 +1,25 @@
+# Electron-builder 24.x configuration. First test the unpacked build.
+appId: org.bca.timetable.manager
+productName: BCA Timetable Manager
+directories:
+  output: release
+files:
+  - dist/main/**/*
+  - dist/renderer/**/*
+  - package.json
+asar: true
+asarUnpack:
+  - '**/*.node'
+# Force native sqlite3 to be rebuilt for the bundled Electron runtime.
+npmRebuild: true
+win:
+  target:
+    - target: nsis
+      arch:
+        - x64
+  artifactName: BCA-Timetable-Manager-Setup-${version}-${arch}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

@@ -1,0 +1,36 @@
+SYLLABUS REFERENCE NOTES — IMPORTANT
+=====================================
+The optional import uses weekly teaching hours from BCA (General) course-structure
+summary tables in the three user-provided Bengaluru City University syllabus PDFs:
+- I & II semester structure, SEP 2024–25 (later BCA General summary table is used for codes).
+- III & IV semester structure, SEP 2025–26, pages 4–5.
+- V & VI semester structure, SEP 2026–27, pages 4–6 in the source document.
+
+Imported subject counts and total WEEKLY SECTION HOURS (NOT faculty totals):
+  I:   9 subjects, 31 h/week per section
+  II: 10 subjects, 33 h/week per section
+  III:9 subjects, 31 h/week per section
+  IV: 10 subjects, 33 h/week per section
+  V:   8 subjects, 32 h/week per section
+  VI:  6 subjects, 22 h/week per section (INCLUDING 3h internship reference)
+
+These numbers are not faculty workload totals. Faculty workload depends on how many
+sections are active, which subjects are assigned to the department's staff, and whether
+project/internship supervision hours are counted according to college policy.
+
+SOURCE CONFLICT / SCHEDULING EXCEPTIONS TO REVIEW
+1. Lab courses in III, IV, V and VI have 3 hours/week in the course structure,
+   while the college's operational rule requires continuous two-period lab sessions.
+   This cannot be fulfilled with only identical 2-period blocks without adjustment;
+   the software flags it instead of inventing a one-period lab.
+2. The Semester VI internship overview lists "03*" guidance/supervision hours,
+   while its later detailed internship page lists 02 hours/week.
+   The import uses the overview figure (3h) but LABELS this for confirmation.
+3. Languages L1/L2 are placeholders to rename, not assertions about which language
+   or guest faculty will be active in a term.
+4. Subject names and code revisions should be compared to the college's final HOD-
+   approved course structure. The importer is optional and skips existing codes.
+5. Subject allocations are per section. Total faculty "allocated hours" is the
+   sum of assignments for that faculty IN ONE SELECTED TERM, not an approved clash-
+   free timetable. Shared/combined teaching and split lab batches need later rules.
+6. The 158-hour figure was explicitly excluded by the user and is not used.
